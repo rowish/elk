@@ -212,6 +212,7 @@ services:
      - logstashdata01:/usr/share/logstash/data
      - "./logstash/logstash_ingest_data/:/usr/share/logstash/ingest_data/"
      - "./logstash/config:/usr/share/logstash/config"
+     - "./logstash/mappings:/usr/share/logstash/mappings"
      - "./logstash/pipelines:/usr/share/logstash/pipelines"
    environment:
      - xpack.monitoring.enabled=false
