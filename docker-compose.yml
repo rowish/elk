@@ -198,6 +198,12 @@ services:
      - LOGSTASH_HOSTS=http://logstash01:9600
 
  logstash01:
+  #  build:
+  #    context: ./logstash
+  #    dockerfile: Dockerfile
+  #    args:
+  #      SMTP_USER: "your_email@example.com"
+  #      SMTP_PASS: "your_secure_password"
    depends_on:
      es01:
        condition: service_healthy
