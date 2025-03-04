@@ -1,0 +1,27 @@
+- name: Synchronize ELK configuration
+  hosts: elk_server
+  become: true
+  tasks:
+
+    - name: Ensure required directories exist
+      file:
+        path: "/opt/elk"
+        state: directory
+        mode: '0755'
+
+    - name: Synchronize configuration files
+      synchronize:
+        src: "/mnt/c/Users/Cristi/Documents/Repository/elk/"
+        dest: "/opt/elk"
+        rsync_opts:
+          - "--delete"
+
+    - name: Check if Docker Compose file changed
+      stat:
+        path: "/opt/elk/docker-compose.yml"
+      register: docker_compose
+
+    - name: Restart ELK stack if Docker Compose changed
+      when: docker_compose.stat.exists
+      shell: |
+        cd /opt/elk && docker-compose down && docker-compose up -d
