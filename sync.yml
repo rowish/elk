@@ -1,6 +1,12 @@
-- name: Synchronize ELK configuration
+# This Ansible playbook is used to synchronize the ELK components from the local machine to the ELK server.
+# It uses the `synchronize` module to copy the files from the local machine to the ELK server.
+# The `set_fact` module is used to compare the list of files before and after the synchronization process to determine if any changes were made.
+# If changes were detected, the playbook will restart the Logstash service using the `shell` module.
+- name: Synchronize ELK components
   hosts: elk_server
   become: true
+  vars:
+    repo_path: "{{ playbook_dir }}"
   tasks:
 
     - name: Ensure required directories exist
@@ -9,19 +15,55 @@
         state: directory
         mode: '0755'
 
-    - name: Synchronize configuration files
+    - name: Get list of current files before sync
+      find:
+        paths: "/opt/elk"
+      register: before_sync
+      tags: always
+
+    - name: Synchronize Elasticsearch (Update Only)
       synchronize:
-        src: "/mnt/c/Users/Cristi/Documents/Repository/elk/"
-        dest: "/opt/elk"
-        rsync_opts:
-          - "--delete"
+        src: "{{ repo_path }}/elasticsearch/"
+        dest: "/opt/elk/elasticsearch"
+      tags: elasticsearch
 
-    - name: Check if Docker Compose file changed
-      stat:
-        path: "/opt/elk/docker-compose.yml"
-      register: docker_compose
+    - name: Synchronize Logstash (Update Only)
+      synchronize:
+        src: "{{ repo_path }}/logstash/"
+        dest: "/opt/elk/logstash"
+      tags: logstash
 
-    - name: Restart ELK stack if Docker Compose changed
-      when: docker_compose.stat.exists
+    - name: Synchronize Kibana (Update Only)
+      synchronize:
+        src: "{{ repo_path }}/kibana/"
+        dest: "/opt/elk/kibana"
+      tags: kibana
+
+    - name: Synchronize Filebeat (Update Only)
+      synchronize:
+        src: "{{ repo_path }}/filebeat/"
+        dest: "/opt/elk/filebeat"
+      tags: filebeat
+
+    - name: Synchronize Metricbeat (Update Only)
+      synchronize:
+        src: "{{ repo_path }}/metricbeat/"
+        dest: "/opt/elk/metricbeat"
+      tags: metricbeat
+
+    - name: Get list of current files after sync
+      find:
+        paths: "/opt/elk"
+      register: after_sync
+      tags: always
+
+    - name: Compare pre and post sync file list
+      set_fact:
+        changes_detected: "{{ before_sync.matched != after_sync.matched }}"
+      tags: always
+
+    - name: Restart Logstash if files added/removed
+      when: changes_detected and 'logstash' in ansible_run_tags
       shell: |
-        cd /opt/elk && docker-compose down && docker-compose up -d
+        cd /opt/elk && docker-compose restart logstash
+      tags: logstash
